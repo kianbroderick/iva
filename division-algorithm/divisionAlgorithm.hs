@@ -1,7 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module SingleVariable where
+module DivisionAlgorithm where
 
 import Data.Bifunctor (first)
 import Data.List (partition, sortBy)
@@ -45,7 +45,7 @@ class PrettyPrintable a where
   pprint :: a -> String
 
 instance (Show a, Coefficient a) => PrettyPrintable (Term a) where
-  pprint (Term 0 _) = []
+  pprint (Term 0 _) = "0"
   pprint (Term 1 1) = " + " ++ "x"
   pprint (Term 1 pow)
     | pow == 0 = " + " ++ show 1
@@ -64,10 +64,12 @@ instance (Show a, Coefficient a) => PrettyPrintable (Term a) where
     | otherwise = " + " ++ show coef ++ "x^" ++ show pow
 
 instance (Show a, Num a, Ord a) => PrettyPrintable (Polynomial a) where
+  pprint (Polynomial []) = "0"
   pprint (Polynomial ts) = dropPlus $ go ts
     where
       dropPlus = dropWhile (\c -> c == ' ' || c == '+')
       go [] = []
+      go ((Term 0 _) : ts) = go ts
       go (t : ts) = pprint t ++ go ts
 
 class Poly a where
@@ -78,6 +80,13 @@ class Poly a where
   mult :: a -> a -> a
   (<**>) :: a -> a -> a
   (<**>) = mult
+  raise :: (Integral b) => a -> b -> a
+  raise a 0 = a
+  raise a n = a <**> raise a (n - 1)
+  ($^) :: (Integral b) => a -> b -> a
+  ($^) = raise
+
+infixr 5 $^
 
 instance (Coefficient a) => Poly (Term a) where
   type Field (Term a) = a
@@ -137,7 +146,7 @@ divAlgorithm f g = go (Polynomial []) f
 (Polynomial f) <++> (Polynomial g) = combine . Polynomial $ f ++ g
 
 instance (PrettyPrintable (Polynomial a)) => PrettyPrintable (Polynomial a, Polynomial a) where
-  pprint (f, g) = pprint f ++ "   ,   " ++ pprint g
+  pprint (f, g) = pprint f ++ ", remainder " ++ pprint g
 
 polynomialGCD :: (Coefficient a, Fractional a) => Polynomial a -> Polynomial a -> Polynomial a
 polynomialGCD = go
