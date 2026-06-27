@@ -14,6 +14,8 @@ main = do
   putStrLn $ "g = " ++ pprint g
   let (q, r) = divAlgorithm f g
   putStrLn $ "f = (" ++ pprint q ++ ")(" ++ pprint g ++ ") + " ++ pprint r
+  putStrLn "-------------------------"
+  putStrLn $ "gcd(" ++ pprint f1 ++ ", " ++ pprint g1 ++ ") = " ++ pprint (polynomialGCD f1 g1)
 
 f :: (Coefficient a) => Polynomial a
 f = newPoly [1, 2, 1, 1]
@@ -23,6 +25,12 @@ g = newPoly [2, 1]
 
 h :: (Coefficient a) => Polynomial a
 h = newPoly [1, 0, -2]
+
+f1 :: (Coefficient a, Fractional a) => Polynomial a
+f1 = Polynomial [Term 1 4, Term (-1) 0]
+
+g1 :: (Coefficient a, Fractional a) => Polynomial a
+g1 = Polynomial [Term 1 6, Term (-1) 0]
 
 type Coefficient a = (Num a, Eq a, Show a, Ord a)
 
@@ -114,6 +122,12 @@ divAlgorithm f g = go (Polynomial []) f
         over :: (Coefficient a, Fractional a) => Term a -> Term a -> Term a
         (Term c1 p1) `over` (Term c2 p2) = Term (c1 / c2) (p1 - p2)
 
+polynomialGCD :: (Coefficient a, Fractional a) => Polynomial a -> Polynomial a -> Polynomial a
+polynomialGCD = go
+  where
+    go h (Polynomial []) = h
+    go h s = let (_, rem) = divAlgorithm h s in go s rem
+
 getQ :: (Polynomial a, Polynomial a) -> Polynomial a
 getQ = fst
 
@@ -141,7 +155,7 @@ getCoefficients ts = go ps maxpower
       | otherwise = 0 : go (x : xs) (n - 1)
 
 combine :: (Num a, Eq a) => Polynomial a -> Polynomial a
-combine (Polynomial ts) = Polynomial (go ts)
+combine (Polynomial ts) = sortTerms $ Polynomial (go ts)
   where
     go [] = []
     go (t : ts) =

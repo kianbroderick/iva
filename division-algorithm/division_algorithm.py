@@ -29,6 +29,8 @@ class Polynomial:
         if not self.coefficients:
             return "0"
         for c, p in self.full:
+            if not c:
+                continue
             if c > 0:
                 output_string += f" + "
             else:
@@ -115,6 +117,15 @@ class Polynomial:
             F = F.add(term)  # noqa: N806
         return F
 
+    def gcd(self, g: Polynomial) -> Polynomial:
+        h = Polynomial(self.coefficients)
+        s = Polynomial(g.coefficients)
+        while s.coefficients:
+            _, rem = h.div(s)
+            h = Polynomial(s.coefficients)
+            s = Polynomial(rem.coefficients)
+        return h
+
     def newton_rahpson(self, x0: float, n: int = 100) -> float:
         df = self.differentiate()
         for _ in range(n):
@@ -152,6 +163,11 @@ def main() -> None:
     print(f"g = {g.show()}")
     q, r = f.div(g)
     print(f"f = ({q.show()})({g.show()}) + {r.show()}")
+    print("-------------------------")
+    f = Polynomial([1, 0, 0, 0, -1])
+    g = Polynomial([1, 0, 0, 0, 0, 0, -1])
+    h = f.gcd(g)
+    print(f"gcd({f.show()}, {g.show()}) = {h.show()}")
 
 
 if __name__ == "__main__":
