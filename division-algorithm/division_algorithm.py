@@ -76,6 +76,73 @@ class Polynomial:
 
         return (q, r)
 
+    def eval(self, x: float) -> float:
+        summation = 0
+        for c, p in self.full:
+            summation += c * (x**p)
+        return summation
+
+    def rational_roots(self) -> list[int, int]:
+        roots = []
+        for p in factor(self.coefficients[-1]):
+            for q in factor(self.coefficients[0]):
+                roots.append((p, q))
+        return roots
+
+    def rational_roots_eval(self) -> list[int, int]:
+        zeros = []
+        for p, q in self.rational_roots():
+            if self.eval(p / q) == 0:
+                zeros.append((p, q))
+            elif self.eval(-(p / q)) == 0:
+                zeros.append((-p, q))
+        return zeros
+
+    def differentiate(self, n: int = 1) -> Polynomial:
+        f = Polynomial(self.coefficients)
+        for _ in range(n):
+            df = Polynomial([])
+            for c, p in f.full:
+                term = term_to_polynomial((c * p, p - 1))
+                df = df.add(term)
+            f = Polynomial(df.coefficients)
+        return df
+
+    def integral(self) -> Polynomial:
+        F = Polynomial([])
+        for c, p in self.full:
+            term = term_to_polynomial((c / (p + 1), p + 1))
+            F = F.add(term)
+        return F
+
+    def newton_rahpson(self, x0: float, n: int = 100) -> float:
+        df = self.differentiate()
+        for _ in range(n):
+            x0 = x0 - (self.eval(x0) / df.eval(x0))
+        return x0
+
+    def bisection(self, min: float, max: float, iter=100) -> float:
+        def f(x: float) -> float:
+            return self.eval(x)
+
+        for _ in range(iter):
+            if f(min) * f(max) > 0:
+                raise Exception("min and max have the same sign")
+            midpoint = (min + max) / 2
+            if f(min) * f(midpoint) > 0:
+                min = midpoint
+            else:
+                max = midpoint
+        return midpoint
+
+
+def factor(n: int) -> list[int]:
+    factors = []
+    for i in range(1, n + 1):
+        if n % i == 0:
+            factors.append(i)
+    return factors
+
 
 def main() -> None:
     f = Polynomial([1, 2, 1, 1])
