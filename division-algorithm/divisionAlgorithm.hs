@@ -1,5 +1,5 @@
 {-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module SingleVariable where
 
@@ -41,14 +41,16 @@ data Term a = Term a Power
 
 newtype Polynomial a = Polynomial [Term a] deriving (Eq, Show)
 
-class Poly a k | a -> k where
+class Poly a where
+  type Field a
   pprint :: a -> String
   degree :: a -> Power
   negative :: a -> a
-  eval :: a -> k -> k
+  eval :: a -> Field a -> Field a
   mult :: a -> a -> a
 
-instance (Coefficient a) => Poly (Term a) a where
+instance (Coefficient a) => Poly (Term a) where
+  type Field (Term a) = a
   pprint (Term 0 _) = []
   pprint (Term 1 1) = " + " ++ "x"
   pprint (Term 1 pow)
@@ -74,7 +76,8 @@ instance (Coefficient a) => Poly (Term a) a where
 instance Functor Term where
   fmap f (Term c p) = Term (f c) p
 
-instance (Coefficient a) => Poly (Polynomial a) a where
+instance (Coefficient a) => Poly (Polynomial a) where
+  type Field (Polynomial a) = a
   pprint (Polynomial ts) = dropPlus $ go ts
     where
       dropPlus = dropWhile (\c -> c == ' ' || c == '+')
@@ -183,30 +186,30 @@ rationalRootsEval poly =
     toDecimal :: (Integer, Integer) -> Double
     toDecimal (n, d) = fromInteger n / fromInteger d
 
-class DiffCalculus a where
+class Differentiable a where
   diff :: a -> a
   d :: Int -> a -> a
 
-instance (Coefficient a) => DiffCalculus (Term a) where
+instance (Coefficient a) => Differentiable (Term a) where
   diff (Term _ 0) = Term 0 0
   diff (Term coef pow) = Term (coef * (fromInteger . toInteger) pow) (pow - 1)
   d n f = iterate diff f !! n
 
-instance (Coefficient a) => DiffCalculus (Polynomial a) where
+instance (Coefficient a) => Differentiable (Polynomial a) where
   diff (Polynomial ts) = Polynomial $ map diff ts
   d n f = iterate diff f !! n
 
-class IntCalculus a b | a -> b where
+class (Poly a) => Integrable a where
   integral :: a -> a
-  integrate :: a -> b -> b -> b
+  integrate :: a -> Field a -> Field a -> Field a
 
-instance (Coefficient a, Fractional a) => IntCalculus (Term a) a where
+instance (Coefficient a, Fractional a) => Integrable (Term a) where
   integral (Term coef pow) = Term (coef / fromIntegral (pow + 1)) (pow + 1)
   integrate term lowerBound upperBound =
     let intF = integral term
      in eval intF upperBound - eval intF lowerBound
 
-instance (Coefficient a, Fractional a) => IntCalculus (Polynomial a) a where
+instance (Coefficient a, Fractional a) => Integrable (Polynomial a) where
   integral (Polynomial ts) = Polynomial $ map integral ts
   integrate poly lowerBound upperBound =
     let intF = integral poly
