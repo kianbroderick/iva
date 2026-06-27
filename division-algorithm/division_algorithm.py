@@ -82,14 +82,14 @@ class Polynomial:
             summation += c * (x**p)
         return summation
 
-    def rational_roots(self) -> list[int, int]:
+    def rational_roots(self) -> list[tuple[int, int]]:
         roots = []
         for p in factor(self.coefficients[-1]):
             for q in factor(self.coefficients[0]):
                 roots.append((p, q))
         return roots
 
-    def rational_roots_eval(self) -> list[int, int]:
+    def rational_roots_eval(self) -> list[tuple[int, int]]:
         zeros = []
         for p, q in self.rational_roots():
             if self.eval(p / q) == 0:
@@ -109,10 +109,10 @@ class Polynomial:
         return df
 
     def integral(self) -> Polynomial:
-        F = Polynomial([])
+        F = Polynomial([])  # noqa: N806
         for c, p in self.full:
             term = term_to_polynomial((c / (p + 1), p + 1))
-            F = F.add(term)
+            F = F.add(term)  # noqa: N806
         return F
 
     def newton_rahpson(self, x0: float, n: int = 100) -> float:
@@ -121,13 +121,14 @@ class Polynomial:
             x0 = x0 - (self.eval(x0) / df.eval(x0))
         return x0
 
-    def bisection(self, min: float, max: float, iter=100) -> float:
+    def bisection(self, min: float, max: float, iter: int = 100) -> float:
         def f(x: float) -> float:
             return self.eval(x)
 
         for _ in range(iter):
             if f(min) * f(max) > 0:
-                raise Exception("min and max have the same sign")
+                msg = "min and max have the same sign"
+                raise Exception(msg)
             midpoint = (min + max) / 2
             if f(min) * f(midpoint) > 0:
                 min = midpoint
