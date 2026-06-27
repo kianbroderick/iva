@@ -32,7 +32,7 @@ f1 = Polynomial [Term 1 4, Term (-1) 0]
 g1 :: (Coefficient a, Fractional a) => Polynomial a
 g1 = Polynomial [Term 1 6, Term (-1) 0]
 
-type Coefficient a = (Num a, Eq a, Show a, Ord a)
+type Coefficient a = (Num a, Eq a, Ord a)
 
 type Power = Natural
 
@@ -41,16 +41,10 @@ data Term a = Term a Power
 
 newtype Polynomial a = Polynomial [Term a] deriving (Eq, Show)
 
-class Poly a where
-  type Field a
+class PrettyPrintable a where
   pprint :: a -> String
-  degree :: a -> Power
-  negative :: a -> a
-  eval :: a -> Field a -> Field a
-  mult :: a -> a -> a
 
-instance (Coefficient a) => Poly (Term a) where
-  type Field (Term a) = a
+instance (Show a, Coefficient a) => PrettyPrintable (Term a) where
   pprint (Term 0 _) = []
   pprint (Term 1 1) = " + " ++ "x"
   pprint (Term 1 pow)
@@ -68,6 +62,25 @@ instance (Coefficient a) => Poly (Term a) where
     | coef < 0 = " - " ++ show (abs coef) ++ "x^" ++ show pow
     | coef == 0 = []
     | otherwise = " + " ++ show coef ++ "x^" ++ show pow
+
+instance (Show a, Num a, Ord a) => PrettyPrintable (Polynomial a) where
+  pprint (Polynomial ts) = dropPlus $ go ts
+    where
+      dropPlus = dropWhile (\c -> c == ' ' || c == '+')
+      go [] = []
+      go (t : ts) = pprint t ++ go ts
+
+class Poly a where
+  type Field a
+  degree :: a -> Power
+  negative :: a -> a
+  eval :: a -> Field a -> Field a
+  mult :: a -> a -> a
+  (<**>) :: a -> a -> a
+  (<**>) = mult
+
+instance (Coefficient a) => Poly (Term a) where
+  type Field (Term a) = a
   degree (Term _ p) = p
   negative (Term c p) = Term (negate c) p
   eval (Term c p) x = c * (x ^ p)
@@ -78,20 +91,12 @@ instance Functor Term where
 
 instance (Coefficient a) => Poly (Polynomial a) where
   type Field (Polynomial a) = a
-  pprint (Polynomial ts) = dropPlus $ go ts
-    where
-      dropPlus = dropWhile (\c -> c == ' ' || c == '+')
-      go [] = []
-      go (t : ts) = pprint t ++ go ts
   degree (Polynomial []) = 0
   degree ts = let (Polynomial ts') = combine ts in maximum (fmap getP ts')
   negative (Polynomial ts) = Polynomial $ map negative ts
   eval (Polynomial []) _ = 0
   eval (Polynomial (t : ts)) x = eval t x + eval (Polynomial ts) x
   mult (Polynomial t1s) (Polynomial t2s) = combine $ Polynomial [mult t1 t2 | t1 <- t1s, t2 <- t2s]
-
-(<++>) :: (Coefficient a) => Polynomial a -> Polynomial a -> Polynomial a
-(Polynomial f) <++> (Polynomial g) = combine . Polynomial $ f ++ g
 
 instance Functor Polynomial where
   fmap f (Polynomial ts) = Polynomial $ map (fmap f) ts
@@ -124,6 +129,15 @@ divAlgorithm f g = go (Polynomial []) f
         ltrltg = Polynomial [lt r `over` ltg]
         over :: (Coefficient a, Fractional a) => Term a -> Term a -> Term a
         (Term c1 p1) `over` (Term c2 p2) = Term (c1 / c2) (p1 - p2)
+
+(///) :: forall a. (Coefficient a, Fractional a) => Polynomial a -> Polynomial a -> (Polynomial a, Polynomial a)
+(///) = divAlgorithm
+
+(<++>) :: (Coefficient a) => Polynomial a -> Polynomial a -> Polynomial a
+(Polynomial f) <++> (Polynomial g) = combine . Polynomial $ f ++ g
+
+instance (PrettyPrintable (Polynomial a)) => PrettyPrintable (Polynomial a, Polynomial a) where
+  pprint (f, g) = pprint f ++ "   ,   " ++ pprint g
 
 polynomialGCD :: (Coefficient a, Fractional a) => Polynomial a -> Polynomial a -> Polynomial a
 polynomialGCD = go
