@@ -1,7 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module DivisionAlgorithm where
+module Main where
 
 import Data.Bifunctor (first)
 import Data.List (partition, sortBy)
@@ -15,7 +15,7 @@ main = do
   let (q, r) = divAlgorithm f g
   putStrLn $ "f = (" ++ pprint q ++ ")(" ++ pprint g ++ ") + " ++ pprint r
   putStrLn "-------------------------"
-  putStrLn $ "gcd(" ++ pprint f1 ++ ", " ++ pprint g1 ++ ") = " ++ pprint (polynomialGCD f1 g1)
+  putStrLn $ "gcd(" ++ pprint f1 ++ ", " ++ pprint g1 ++ ") = " ++ pprint (polyGCD f1 g1)
 
 f :: (Coefficient a) => Polynomial a
 f = newPoly [1, 2, 1, 1]
@@ -31,6 +31,9 @@ f1 = Polynomial [Term 1 4, Term (-1) 0]
 
 g1 :: (Coefficient a, Fractional a) => Polynomial a
 g1 = Polynomial [Term 1 6, Term (-1) 0]
+
+h1 :: (Coefficient a, Fractional a) => Polynomial a
+h1 = Polynomial [Term 1 3, Term (-3) 1, Term 2 0]
 
 type Coefficient a = (Num a, Eq a, Ord a)
 
@@ -78,6 +81,7 @@ class Poly a where
   negative :: a -> a
   eval :: a -> Field a -> Field a
   mult :: a -> a -> a
+  scale :: a -> Field a -> a
   (<**>) :: a -> a -> a
   (<**>) = mult
   raise :: (Integral b) => a -> b -> a
@@ -94,6 +98,7 @@ instance (Coefficient a) => Poly (Term a) where
   negative (Term c p) = Term (negate c) p
   eval (Term c p) x = c * (x ^ p)
   mult (Term c1 p1) (Term c2 p2) = Term (c1 * c2) (p1 + p2)
+  scale (Term c p) scalar = Term (scalar * c) p
 
 instance Functor Term where
   fmap f (Term c p) = Term (f c) p
@@ -106,6 +111,7 @@ instance (Coefficient a) => Poly (Polynomial a) where
   eval (Polynomial []) _ = 0
   eval (Polynomial (t : ts)) x = eval t x + eval (Polynomial ts) x
   mult (Polynomial t1s) (Polynomial t2s) = combine $ Polynomial [mult t1 t2 | t1 <- t1s, t2 <- t2s]
+  scale (Polynomial p) scalar = Polynomial $ map (`scale` scalar) p
 
 instance Functor Polynomial where
   fmap f (Polynomial ts) = Polynomial $ map (fmap f) ts
@@ -148,11 +154,14 @@ divAlgorithm f g = go (Polynomial []) f
 instance (PrettyPrintable (Polynomial a)) => PrettyPrintable (Polynomial a, Polynomial a) where
   pprint (f, g) = pprint f ++ ", remainder " ++ pprint g
 
-polynomialGCD :: (Coefficient a, Fractional a) => Polynomial a -> Polynomial a -> Polynomial a
-polynomialGCD = go
+polyGCD :: (Coefficient a, Fractional a) => Polynomial a -> Polynomial a -> Polynomial a
+polyGCD = go
   where
     go h (Polynomial []) = h
     go h s = let (_, rem) = divAlgorithm h s in go s rem
+
+multipleGCD :: (Coefficient a, Fractional a) => [Polynomial a] -> Polynomial a
+multipleGCD = foldl polyGCD (Polynomial [])
 
 getQ :: (Polynomial a, Polynomial a) -> Polynomial a
 getQ = fst
