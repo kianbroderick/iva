@@ -42,7 +42,10 @@ type Power = Natural
 data Term a = Term a Power
   deriving (Eq, Show)
 
-newtype Polynomial a = Polynomial [Term a] deriving (Eq, Show)
+newtype Polynomial a = Polynomial [Term a] deriving (Eq)
+
+instance (Show a, Coefficient a) => Show (Polynomial a) where
+  show = pprint
 
 class PrettyPrintable a where
   pprint :: a -> String
@@ -145,8 +148,8 @@ divAlgorithm f g = go (Polynomial []) f
         over :: (Coefficient a, Fractional a) => Term a -> Term a -> Term a
         (Term c1 p1) `over` (Term c2 p2) = Term (c1 / c2) (p1 - p2)
 
-(///) :: forall a. (Coefficient a, Fractional a) => Polynomial a -> Polynomial a -> (Polynomial a, Polynomial a)
-(///) = divAlgorithm
+(//) :: forall a. (Coefficient a, Fractional a) => Polynomial a -> Polynomial a -> (Polynomial a, Polynomial a)
+(//) = divAlgorithm
 
 (<++>) :: (Coefficient a) => Polynomial a -> Polynomial a -> Polynomial a
 (Polynomial f) <++> (Polynomial g) = combine . Polynomial $ f ++ g
